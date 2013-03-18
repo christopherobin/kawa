@@ -19,6 +19,14 @@ zend_function_entry kawa_pool_functions[] = {
 
 static zend_object_handlers kawa_pool_instance_handlers;
 
+void kawa_pool_on_signal(uv_signal_t *handle, int signum)
+{
+	// kill the loop if we get a SIGINT
+	if (signum == SIGINT) {
+		uv_stop(handle->loop);
+	}
+}
+
 /** Called when an instance of Pool is destroyed */
 static void kawa_pool_free(void *object TSRMLS_DC)
 {
@@ -54,6 +62,11 @@ static zend_object_value kawa_pool_new_ex(zend_class_entry *class_type, uv_loop_
 	if (intern->loop == NULL) {
 		intern->loop = uv_loop_new();
 	}
+
+	// listen for sigints
+	uv_signal_init(intern->loop, &intern->sigint);
+	uv_signal_start(&intern->sigint, kawa_pool_on_signal, SIGINT);
+	uv_unref((uv_handle_t*) &intern->sigint);
 
 	// then init the class
 	zend_object_std_init(&intern->zo, class_type TSRMLS_CC);

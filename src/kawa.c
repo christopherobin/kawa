@@ -33,6 +33,9 @@ PHP_MINIT_FUNCTION(kawa)
 	// register class \Kawa\Network\TCP
 	kawa_network_tcp_init();
 
+	// register class \Kawa\Network\Socket
+	kawa_network_socket_init();
+
 	return SUCCESS;
 }
 

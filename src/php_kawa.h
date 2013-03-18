@@ -14,11 +14,13 @@
 #define KAWA_FOREACH_ENTRY(ht,dest) if (zend_hash_get_current_data(ht,(void**)& dest) == FAILURE) {\
 	continue;\
 }
+#define KAWA_DEFAULT_BIND_ADDRESS "0.0.0.0"
 
 /** A pool in Kawa is a uv_loop instance, with it's associated streams */
 typedef struct _kawa_pool_instance {
 	zend_object				zo;
 	uv_loop_t				*loop;
+	uv_signal_t				sigint;
 } kawa_pool_instance;
 
 /** This is the EventEmitter instance */
@@ -28,14 +30,23 @@ typedef struct _kawa_eventemitter_instance {
 	int						max_listeners;
 } kawa_eventemitter_instance;
 
+#define KAWA_USE_EVENTEMITTER union {\
+	zend_object					zo;\
+	kawa_eventemitter_instance  event;\
+}
+
 /** This is the TCP server instance */
 typedef struct _kawa_network_tcp_instance {
-	union {
-		zend_object					zo;
-		kawa_eventemitter_instance  event;
-	};
+	KAWA_USE_EVENTEMITTER;
 	zval						*pool;
+	uv_tcp_t					server;
 } kawa_network_tcp_instance;
+
+/** This is the TCP socket instance */
+typedef struct _kawa_network_socket_instance {
+	KAWA_USE_EVENTEMITTER;
+	uv_tcp_t					socket;
+} kawa_network_socket_instance;
 
 /** A small helper to store php callbacks */
 typedef struct _php_callback {
@@ -60,6 +71,10 @@ ZEND_END_MODULE_GLOBALS(kawa)
 #else
 #define KAWA_G(v) (kawa_globals.v)
 #endif
+
+/** Emit a signal from an EventEmitter class */
+KAWA_EMIT(signal, vararg)\
+};
 
 /** Our module init function */
 PHP_MINIT_FUNCTION(kawa);
@@ -102,6 +117,16 @@ extern void kawa_network_tcp_init();
 PHP_METHOD(TCP, __construct);
 PHP_METHOD(TCP, listen);
 PHP_METHOD(TCP, getPool);
+
+/** Here is the descriptions for the \Kawa\Network\Socket class */
+extern zend_class_entry *kawa_network_socket_class_entry;
+
+/** Finally the \Kawa\Network\Socket constructor and methods */
+extern void kawa_network_socket_init();
+PHP_METHOD(Socket, __construct);
+PHP_METHOD(Socket, connect);
+PHP_METHOD(Socket, read);
+PHP_METHOD(Socket, write);
 
 /** This is the module entry */
 extern zend_module_entry kawa_module_entry;

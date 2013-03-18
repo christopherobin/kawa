@@ -184,6 +184,10 @@ PHP_METHOD(EventEmitter, emit)
 	php_call_arguments			arguments;
 	kawa_eventemitter_instance  *instance;
 
+	// set that to 0 to prevent... fun
+	arguments.varargs = NULL;
+	arguments.num_vararg = 0;
+
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s*", &name, &name_len, &arguments.varargs, &arguments.num_vararg) == FAILURE) {
 		RETURN_FALSE;
 	}
@@ -198,7 +202,7 @@ PHP_METHOD(EventEmitter, emit)
 	// apply the callback for each listeners
 	zend_hash_apply_with_argument(listeners, kawa_eventemitter_apply_emit, &arguments TSRMLS_CC);
 
-	if (arguments.varargs) {
+	if (arguments.varargs != NULL) {
 		efree(arguments.varargs);
 	}
 }

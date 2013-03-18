@@ -33,7 +33,7 @@ if test "$PHP_KAWA" != "no"; then
 	fi
 
 
-	PHP_NEW_EXTENSION(kawa, kawa.c kawa/pool.c kawa/events.c kawa/network/tcp.c, $ext_shared)
+	PHP_NEW_EXTENSION(kawa, kawa.c kawa/pool.c kawa/events.c kawa/network/tcp.c kawa/network/socket.c, $ext_shared)
 	PHP_SUBST(KAWA_SHARED_LIBADD)
 	KAWA_SHARED_LIBADD="$KAWA_SHARED_LIBADD $LIBUV_PATH/libuv.a"
 fi
