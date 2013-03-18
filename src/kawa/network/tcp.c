@@ -30,15 +30,18 @@ static zend_object_handlers kawa_network_tcp_instance_handlers;
 /** Called when an instance of Pool is destroyed */
 static void kawa_network_tcp_free(void *object TSRMLS_DC)
 {
-	kawa_network_tcp_instance *intern = (kawa_network_tcp_instance *)object;
+	kawa_network_tcp_instance *instance = (kawa_network_tcp_instance *)object;
+
+	// destroy eventemitter stuff
+	kawa_eventemitter_destroy((kawa_eventemitter_instance*)instance TSRMLS_CC);
 
 	// do we have linked pool?
-	if (intern->pool != NULL) {
+	if (instance->pool != NULL) {
 		// free it
-		zval_ptr_dtor(&intern->pool);
+		zval_ptr_dtor(&instance->pool);
 	}
 
-	zend_object_std_dtor(&intern->zo TSRMLS_CC);
+	zend_object_std_dtor(&instance->zo TSRMLS_CC);
 	efree(object);
 }
 
@@ -60,6 +63,9 @@ static zend_object_value kawa_network_tcp_new_ex(zend_class_entry *class_type, k
 
 	// set that thing to null
 	intern->pool = NULL;
+
+	// setup eventemitter
+	kawa_eventemitter_setup((kawa_eventemitter_instance*)intern);
 
 	// then init the class
 	zend_object_std_init(&intern->zo, class_type TSRMLS_CC);

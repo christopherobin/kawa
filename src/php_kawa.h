@@ -10,6 +10,10 @@
 #include "php.h"
 
 #define KAWA_MODULE_VERSION "0.1.0-dev"
+#define KAWA_FOREACH(ht) for (zend_hash_internal_pointer_reset(ht); zend_hash_has_more_elements(ht) == SUCCESS; zend_hash_move_forward(ht))
+#define KAWA_FOREACH_ENTRY(ht,dest) if (zend_hash_get_current_data(ht,(void**)& dest) == FAILURE) {\
+	continue;\
+}
 
 /** A pool in Kawa is a uv_loop instance, with it's associated streams */
 typedef struct _kawa_pool_instance {
@@ -18,13 +22,18 @@ typedef struct _kawa_pool_instance {
 } kawa_pool_instance;
 
 /** This is the EventEmitter instance */
-/*typedef struct _kawa_eventemitter_instance {
+typedef struct _kawa_eventemitter_instance {
 	zend_object				zo;
-} kawa_eventemitter_instance;*/
+	HashTable				*events;
+	int						max_listeners;
+} kawa_eventemitter_instance;
 
 /** This is the TCP server instance */
 typedef struct _kawa_network_tcp_instance {
-	zend_object					zo;
+	union {
+		zend_object					zo;
+		kawa_eventemitter_instance  event;
+	};
 	zval						*pool;
 } kawa_network_tcp_instance;
 
@@ -32,7 +41,14 @@ typedef struct _kawa_network_tcp_instance {
 typedef struct _php_callback {
 	zend_fcall_info			fci;
 	zend_fcall_info_cache   fci_cache;
+	// delete this callback after one use?
+	zend_bool				once;
 } php_callback;
+
+typedef struct _php_call_arguments {
+	zval ***varargs;
+	int num_vararg;
+} php_call_arguments;
 
 /** Those are our globals */
 ZEND_BEGIN_MODULE_GLOBALS(kawa)
@@ -67,8 +83,8 @@ extern zend_class_entry *kawa_eventemitter_class_entry;
 
 /** Finally the \Kawa\EventEmitter constructor and methods */
 extern void kawa_eventemitter_init();
-PHP_METHOD(EventEmitter, __construct);
-PHP_METHOD(EventEmitter, __destruct);
+extern void kawa_eventemitter_setup(kawa_eventemitter_instance *instance TSRMLS_DC);
+extern void kawa_eventemitter_destroy(kawa_eventemitter_instance *instance TSRMLS_DC);
 PHP_METHOD(EventEmitter, setMaxListeners);
 PHP_METHOD(EventEmitter, getMaxListeners);
 PHP_METHOD(EventEmitter, emit);
