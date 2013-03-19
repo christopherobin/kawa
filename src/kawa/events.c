@@ -61,6 +61,8 @@ zend_object_value kawa_eventemitter_create_object(zend_class_entry *class_entry 
 void kawa_eventemitter_setup(kawa_eventemitter_instance *instance TSRMLS_DC)
 {
 	instance->max_listeners = KAWA_EVENTEMITTER_MAX_LISTENERS;
+	instance->add_cb = NULL;
+	instance->del_cb = NULL;
 
 	// this hashtable store our events
 	ALLOC_HASHTABLE(instance->events);
@@ -243,7 +245,10 @@ PHP_METHOD(EventEmitter, on)
 		zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Tried to add one too many listeners on an event.", 0 TSRMLS_CC);
 	}
 
-	//php_printf("debug: stored function %p\n", callback.fci_cache.function_handler);
+	// call any callback set
+	if (instance->add_cb != NULL) {
+		instance->add_cb(instance, name, name_len, &callback);
+	}
 
 	// now store the callback
 	Z_ADDREF_P(callback.fci.function_name);
@@ -284,6 +289,17 @@ PHP_METHOD(EventEmitter, once)
 		}
 	}
 
+	// check if we already have the maximum amount of listeners on this event
+	if (zend_hash_num_elements(listeners) >= instance->max_listeners) {
+		// throw a nice exception
+		zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Tried to add one too many listeners on an event.", 0 TSRMLS_CC);
+	}
+
+	// call any callback set
+	if (instance->add_cb != NULL) {
+		instance->add_cb(instance, name, name_len, &callback);
+	}
+
 	// now store the callback
 	Z_ADDREF_P(callback.fci.function_name);
 	if (zend_hash_next_index_insert(listeners, &callback, sizeof(php_callback), NULL) == FAILURE) {
@@ -322,6 +338,11 @@ PHP_METHOD(EventEmitter, off)
 	if (zend_hash_find(instance->events, name, name_len, (void**)&listeners) == FAILURE) {
 		// what the hell are you trying to do? removing a callback that doesn't exists
 		RETURN_FALSE;
+	}
+
+	// call any callback set
+	if (instance->del_cb != NULL) {
+		instance->del_cb(instance, name, name_len, &callback);
 	}
 
 	// try to find that callback and remove it

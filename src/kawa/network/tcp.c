@@ -87,7 +87,7 @@ void kawa_network_tcp_on_new_connection(uv_stream_t *server, int status)
 	kawa_network_tcp_instance *instance;
 	kawa_pool_instance *pool_instance;
 
-	php_printf("debug: connection incoming %p (status: %d)\n", server, status);
+	//php_printf("debug: connection incoming %p (status: %d)\n", server, status);
 	if (status == -1) {
 		// oups something is wrong :sadface:
 		return;
@@ -103,6 +103,12 @@ void kawa_network_tcp_on_new_connection(uv_stream_t *server, int status)
 	uv_tcp_init(pool_instance->loop, client);
 
 	if (uv_accept(server, (uv_stream_t*)client) == 0) {
+		// create socket object
+		zval *php_client;
+		MAKE_STD_ZVAL(php_client);
+		Z_TYPE_P(php_client) = IS_OBJECT;
+		Z_OBJVAL_P(php_client) = kawa_network_socket_new_ex(kawa_network_socket_class_entry, client, NULL TSRMLS_CC);
+		kawa_network_socket_setup(php_client);
 		// emit connection signal
 		zval *retval;
 		// first alloc the signal name
@@ -110,11 +116,10 @@ void kawa_network_tcp_on_new_connection(uv_stream_t *server, int status)
 		MAKE_STD_ZVAL(signal_name);
 		ZVAL_STRING(signal_name, "connection", 1);
 		// then instanciate a \Kawa\Network\Socket with our socket
-		zend_call_method_with_1_params(&this_ptr, Z_OBJCE_P(this_ptr), NULL, "emit", &retval, signal_name);
+		zend_call_method_with_2_params(&this_ptr, Z_OBJCE_P(this_ptr), NULL, "emit", &retval, signal_name, php_client);
 		zval_ptr_dtor(&signal_name);
+		zval_ptr_dtor(&php_client);
 		zval_ptr_dtor(&retval);
-
-		uv_close((uv_handle_t*) client, NULL);
 	} else {
 		uv_close((uv_handle_t*) client, NULL);
 	}
@@ -129,6 +134,8 @@ void kawa_network_tcp_init()
 	INIT_NS_CLASS_ENTRY(kawa_network_tcp_ce, "Kawa\\Network", "TCP", kawa_network_tcp_functions);
 	kawa_network_tcp_class_entry = zend_register_internal_class_ex(&kawa_network_tcp_ce, kawa_eventemitter_class_entry, NULL TSRMLS_CC);
 	kawa_network_tcp_class_entry->create_object = kawa_network_tcp_new;
+	// we don't want anyone extending that class, sorry
+	kawa_network_tcp_class_entry->ce_flags |= ZEND_ACC_FINAL_CLASS;
 }
 
 PHP_METHOD(TCP, __construct)

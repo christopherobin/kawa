@@ -28,7 +28,7 @@ void kawa_pool_on_signal(uv_signal_t *handle, int signum)
 }
 
 /** Called when an instance of Pool is destroyed */
-static void kawa_pool_free(void *object TSRMLS_DC)
+void kawa_pool_free(void *object TSRMLS_DC)
 {
 	kawa_pool_instance *intern = (kawa_pool_instance *)object;
 
@@ -42,7 +42,7 @@ static void kawa_pool_free(void *object TSRMLS_DC)
 }
 
 /** This is our Pool constructor */
-static zend_object_value kawa_pool_new_ex(zend_class_entry *class_type, uv_loop_t *loop, kawa_pool_instance **ptr TSRMLS_DC)
+zend_object_value kawa_pool_new_ex(zend_class_entry *class_type, uv_loop_t *loop, kawa_pool_instance **ptr TSRMLS_DC)
 {
 	zval *tmp;
 	zend_object_value retval;
@@ -77,7 +77,7 @@ static zend_object_value kawa_pool_new_ex(zend_class_entry *class_type, uv_loop_
 	return retval;
 }
 
-static zend_object_value kawa_pool_new(zend_class_entry *class_type TSRMLS_DC)
+zend_object_value kawa_pool_new(zend_class_entry *class_type TSRMLS_DC)
 {
 	return kawa_pool_new_ex(class_type, NULL, NULL TSRMLS_CC);
 }

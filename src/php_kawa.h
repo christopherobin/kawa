@@ -16,6 +16,17 @@
 }
 #define KAWA_DEFAULT_BIND_ADDRESS "0.0.0.0"
 
+/** A small helper to store php callbacks */
+typedef struct _php_callback {
+	zend_fcall_info			fci;
+	zend_fcall_info_cache   fci_cache;
+	// delete this callback after one use?
+	zend_bool				once;
+} php_callback;
+
+typedef void (*kawa_event_listener_add)(void* instance, char *name, int name_len, php_callback *cb);
+typedef void (*kawa_event_listener_del)(void* instance, char *name, int name_len, php_callback *cb);
+
 /** A pool in Kawa is a uv_loop instance, with it's associated streams */
 typedef struct _kawa_pool_instance {
 	zend_object				zo;
@@ -28,6 +39,8 @@ typedef struct _kawa_eventemitter_instance {
 	zend_object				zo;
 	HashTable				*events;
 	int						max_listeners;
+	kawa_event_listener_add	add_cb;
+	kawa_event_listener_del	del_cb;
 } kawa_eventemitter_instance;
 
 #define KAWA_USE_EVENTEMITTER union {\
@@ -45,16 +58,10 @@ typedef struct _kawa_network_tcp_instance {
 /** This is the TCP socket instance */
 typedef struct _kawa_network_socket_instance {
 	KAWA_USE_EVENTEMITTER;
-	uv_tcp_t					socket;
+	zval						*pool;
+	uv_tcp_t					*socket;
+	zend_bool					reading;
 } kawa_network_socket_instance;
-
-/** A small helper to store php callbacks */
-typedef struct _php_callback {
-	zend_fcall_info			fci;
-	zend_fcall_info_cache   fci_cache;
-	// delete this callback after one use?
-	zend_bool				once;
-} php_callback;
 
 typedef struct _php_call_arguments {
 	zval ***varargs;
@@ -73,7 +80,7 @@ ZEND_END_MODULE_GLOBALS(kawa)
 #endif
 
 /** Emit a signal from an EventEmitter class */
-KAWA_EMIT(signal, vararg)\
+#define KAWA_EMIT(signal, vararg)\
 };
 
 /** Our module init function */
@@ -123,10 +130,13 @@ extern zend_class_entry *kawa_network_socket_class_entry;
 
 /** Finally the \Kawa\Network\Socket constructor and methods */
 extern void kawa_network_socket_init();
+extern zend_object_value kawa_network_socket_new_ex(zend_class_entry *class_type, uv_tcp_t *socket, kawa_network_socket_instance **ptr TSRMLS_DC);
+extern void kawa_network_socket_setup(zval *socket);
 PHP_METHOD(Socket, __construct);
 PHP_METHOD(Socket, connect);
 PHP_METHOD(Socket, read);
 PHP_METHOD(Socket, write);
+PHP_METHOD(Socket, close);
 
 /** This is the module entry */
 extern zend_module_entry kawa_module_entry;
