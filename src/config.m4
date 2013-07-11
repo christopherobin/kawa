@@ -17,23 +17,28 @@ if test "$PHP_KAWA" != "no"; then
 	dnl Check that libuv is compiled
 	if test -f "$LIBUV_PATH/libuv.a" && test -f "$LIBUV_PATH/include/uv.h"; then
 		AC_MSG_RESULT([$LIBUV_PATH])
-
-		dnl Check that the lib works properly
-		AC_CHECK_LIB([pthread], [uv_get_free_memory], [
-			PHP_ADD_INCLUDE("$LIBUV_PATH/include")
-			UV_LIB="$LIBUV_PATH/libuv.a"
-		],[
-			dnl Bail out
-			AC_MSG_ERROR([libuv not found. Check config.log for more information.])
-		], ["$LIBUV_PATH/libuv.a"])
+		UV_LIB="$LIBUV_PATH/libuv.a"
 	else
-		dnl Invalid path, bail out
-		AC_MSG_RESULT([not found])
-		AC_MSG_ERROR([Please check that you retrieved and compiled libuv.])
+		if test -f "$LIBUV_PATH/.libs/libuv.a" && test -f "$LIBUV_PATH/include/uv.h"; then
+			AC_MSG_RESULT([$LIBUV_PATH])
+			UV_LIB="$LIBUV_PATH/.libs/libuv.a"
+		else
+			dnl Invalid path, bail out
+			AC_MSG_RESULT([not found])
+			AC_MSG_ERROR([Please check that you retrieved and compiled libuv.])
+		fi
 	fi
 
+	dnl Check that the lib works properly
+	AC_CHECK_LIB([pthread], [uv_get_free_memory], [
+		PHP_ADD_INCLUDE("$LIBUV_PATH/include")
+		UV_LIB="$UV_LIB"
+	],[
+		dnl Bail out
+		AC_MSG_ERROR([libuv not found. Check config.log for more information.])
+	], ["$UV_LIB"])
 
 	PHP_NEW_EXTENSION(kawa, kawa.c kawa/pool.c kawa/events.c kawa/network/tcp.c kawa/network/socket.c, $ext_shared)
 	PHP_SUBST(KAWA_SHARED_LIBADD)
-	KAWA_SHARED_LIBADD="$KAWA_SHARED_LIBADD $LIBUV_PATH/libuv.a"
+	KAWA_SHARED_LIBADD="$KAWA_SHARED_LIBADD $UV_LIB"
 fi
